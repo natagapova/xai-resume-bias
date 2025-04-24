@@ -229,6 +229,12 @@ Here, location details had influence.
 ![Token attribution barplot for Sample 3](./notebooks/example3.png)
 This sample shows that school background had too much influence.
 
+**Sample 4:**
+![Token attribution barplot for Sample 3](./notebooks/example4.png)
+
+**Sample 5:**
+![Token attribution barplot for Sample 3](./notebooks/example5.png)
+
 The results are complex. Some patterns suggest bias, but the link between personal details and model decisions is not always clear. This shows why we need careful analysis and regular checks of automated resume systems.
 
 ---
