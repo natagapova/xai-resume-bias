@@ -16,20 +16,17 @@ In this project, we apply the **Integrated Gradients (IG)** method to a resume c
 ## Application Domain
 
 **Domain**: Human Resources automation — resume classification  
-**Dataset**: [ResumeAtlas](https://huggingface.co/datasets/ahmedheakl/resume-atlas) (13,000+ resumes)  
 **Importance**: Decisions based on biased algorithms can negatively impact individuals' employment opportunities
 
 ---
 
 ## Model Description
 
-We use the publicly available model [`resume-classification-gemma-2b-v1`](https://huggingface.co/ahmedheakl/resume-classification-gemma-2b-v1):
+We use the publicly available model [`distilbert-base-uncased-finetuned-sst-2-english`](https://huggingface.co/ahmedheakl/resume-classification-gemma-2b-v1):
 
-- **Architecture**: Decoder-only lightweight LLM  
 - **Type**: Text-to-text model  
 
-Although the model performs well, its predictions are not interpretable. Therefore, we apply explainability techniques to understand token-level decisions.
-
+At first, we were supposed to use Ahmed Heakl's ResumeAtlas model, but it wasn't available online, so we used another model.
 ---
 
 ## Explainability Method: Integrated Gradients
@@ -74,7 +71,5 @@ For HR applications, explainability tools like IG are critical to ensure fairnes
 
 ## Links
 
-- **Code repository**: `<your GitHub repo link here>`  
-- **Dataset**: [ResumeAtlas](https://huggingface.co/datasets/ahmedheakl/resume-atlas)  
-- **Model**: [Gemma 2B Resume Classifier](https://huggingface.co/ahmedheakl/resume-classification-gemma-2b-v1)  
+- **Code repository**: `link`[https://github.com/natagapova/xai-resume-bias]
 - **Method paper**: [Integrated Gradients (Sundararajan et al., 2017)](https://arxiv.org/abs/1703.01365)
