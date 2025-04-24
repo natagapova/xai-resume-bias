@@ -75,7 +75,7 @@ Given the input:
 
 We calculated token attributions with IG. The visualization (see below) shows which tokens had the most influence on the model's decision.
 
-![Token attribution barplot](./notebooks/example1.png)
+![Token attribution barplot](./notebooks/example0.png)
 
 The visualization shows these key points:
 
@@ -219,11 +219,11 @@ We used Integrated Gradients on samples from the original dataset to see how per
 
 **Sample 1:**
 ![Token attribution barplot for Sample 1](./notebooks/example1.png)
-This sample shows the candidate's name had more influence than it should.
+This sample shows that irrelevant information influences the model's response.
 
 **Sample 2:**
 ![Token attribution barplot for Sample 2](./notebooks/example2.png)
-Here, location details had surprisingly high scores.
+Here, location details had influence.
 
 **Sample 3:**
 ![Token attribution barplot for Sample 3](./notebooks/example3.png)
