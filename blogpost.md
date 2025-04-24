@@ -24,13 +24,15 @@ Companies now receive hundreds or thousands of applications for each job. Manual
 
 ## Model Description
 
-We use the publicly available model [`bert-resume-classification`](https://huggingface.co/ahmedheakl/bert-resume-classification), which implementation and results are described in the [paper](https://arxiv.org/html/2406.18125v1). The model was trained on the [`resume-atlas`](https://huggingface.co/datasets/ahmedheakl/resume-atlas) dataset, which contains over 13,000 professionally written resumes across 43 different job categories.
+We use the publicly available model [`bert-resume-classification`](https://huggingface.co/ahmedheakl/bert-resume-classification), which was implemented in the [paper](https://arxiv.org/html/2406.18125v1) we have found. The model was trained on the [`resume-atlas`](https://huggingface.co/datasets/ahmedheakl/resume-atlas) dataset, which contains over 13,000 professionally written resumes across 43 different job categories parsed from LinkedIn.
 
-- **Type**: Text-to-text model
+The model takes the heavily preprocessed text of the resume and classifies it into one of the 43 job classes. This model can be used by recruitment automation systems to filter out the resumes that do not seem to be relevant to the job opening.
+
+- **Type**: Text-to-class model
 - **Architecture**: BERT-based transformer model
 - **Training Data**: Large collection of professional resumes from resume-atlas dataset
 - **Output**: Classification of resumes into job categories
-- **Input Processing**: Breaks down resume text into tokens while keeping context
+- **Input Processing**: Breaks down resume text into tokens (with nltk) while keeping context
 
 The model works with resumes as sequences of tokens. Each token represents a word or part of a word. It uses BERT's attention system to understand how different parts of the resume connect and make classification decisions based on the whole context.
 
@@ -40,7 +42,7 @@ Integrated Gradients (IG) is a method that shows which parts of the input matter
 
 ### Mathematical Foundation
 
-The Integrated Gradients method follows these rules:
+The Integrated Gradients method follows 3 key rules:
 
 1. **Path Integration**: It measures changes along a path from a baseline to the actual input
 2. **Completeness**: The total of all attributions equals the difference between the model's output for the actual input and the baseline
@@ -49,14 +51,14 @@ The Integrated Gradients method follows these rules:
 ### Implementation Steps:
 
 1. **Baseline Selection**: Pick a baseline input (like an empty string) that means "no information"
-2. **Input Encoding**: Convert both baseline and actual input into tokens
+2. **Input Encoding**: Convert both baseline and actual input into tokens and then into embeddings
 3. **Gradient Computation**:
    - Create steps between baseline and actual input
    - Measure how the model's output changes at each step
 4. **Attribution Calculation**:
    - Add up the changes along the path
    - Get final scores for each token
-5. **Visualization**: Show the scores in barplots or heatmaps
+5. **Visualization**: Show the scores of top features (tokens) in barplots
 
 ### Advantages of IG:
 
@@ -69,7 +71,7 @@ The Integrated Gradients method follows these rules:
 
 ## Token Attribution Example
 
-Given the input:
+Given the input (human-readable and not pre-processed just as an example):
 
 > "Senior Java developer with 10+ years experience in backend systems, cloud, and microservices."
 
@@ -79,99 +81,15 @@ We calculated token attributions with IG. The visualization (see below) shows wh
 
 The visualization shows these key points:
 
-1. Technical words like "Java", "backend", and "microservices" got high positive scores
-2. Experience details ("10+ years") had strong importance
-3. Job level ("Senior") helped the classification
-4. Common words got low scores, as expected
+1. Technical words like "Java", "developer", and "##end" (for backend?) got high positive scores
+2. Experience details ("10+ years") had low importance
+3. Common words got low scores, as expected
 
-### Implementation Code
+### Implementation
 
-Here's the Python code we used to implement the Integrated Gradients analysis:
+Our approach is straightforward:
 
-```python
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
-import torch
-from captum.attr import IntegratedGradients
-import matplotlib.pyplot as plt
-device = "cpu" if not torch.cuda.is_available() else "cuda"
-
-# Load the BERT model for resume classification
-adapter_model_id = "ahmedheakl/bert-resume-classification"
-tokenizer = AutoTokenizer.from_pretrained(adapter_model_id, device=device)
-model = AutoModelForSequenceClassification.from_pretrained(adapter_model_id)
-model.eval()
-
-def draw_attributions(attributions, input_ids, fig_number):
-    # Process attribution scores and create visualization
-    token_attributions = attributions.sum(dim=-1).squeeze().detach().numpy()
-    tokens = tokenizer.convert_ids_to_tokens(input_ids[0])
-
-    # Get top 20 most important tokens
-    token_attr_pairs = list(zip(tokens, token_attr_pairs))
-    token_attr_pairs.sort(key=lambda x: abs(x[1]), reverse=True)
-    top_20_pairs = token_attr_pairs[:20]
-    top_tokens, top_attributions = zip(*top_20_pairs)
-
-    # Create and save the visualization
-    plt.figure(figsize=(14, 3))
-    plt.bar(top_tokens, top_attributions)
-    plt.xticks(rotation=45, ha="right")
-    plt.title("Top 20 Token Importance via Integrated Gradients")
-    plt.tight_layout()
-    plt.savefig(f"example{fig_number}.png", bbox_inches='tight')
-    plt.show()
-
-def test_sample(input_text, ig):
-    # Process input text and compute attributions
-    input_ids = get_input_ids(input_text)
-    baseline_ids = get_baseline_ids(input_ids)
-
-    input_embeds = ids_to_embeddings(input_ids)
-    baseline_embeds = ids_to_embeddings(baseline_ids)
-
-    attributions, _ = ig.attribute(
-        inputs=input_embeds,
-        baselines=baseline_embeds,
-        return_convergence_delta=True
-    )
-
-    return attributions, input_ids
-
-# Helper functions for text processing
-def get_input_ids(input_text):
-    inputs = tokenizer(input_text, return_tensors="pt", padding=True)
-    return inputs["input_ids"]
-
-def get_baseline_ids(reference_ids):
-    inputs = tokenizer("", return_tensors="pt", padding="max_length",
-                      max_length=reference_ids.shape[1])
-    return inputs["input_ids"]
-
-def ids_to_embeddings(input_ids):
-    return model.get_input_embeddings()(input_ids).requires_grad_(True)
-
-def forward_from_embeddings(input_embeds):
-    output = model(inputs_embeds=input_embeds)
-    logits = output.logits
-    return torch.softmax(logits, dim=1)[:, 1]
-
-# Sample texts for analysis
-gender_marked_texts = [
-    "Senior Java developer with 10+ years experience in backend systems, cloud, and microservices.",
-    # Additional resume samples...
-]
-
-# Run analysis on each sample
-ig = IntegratedGradients(forward_from_embeddings)
-for i, text in enumerate(gender_marked_texts):
-    print(text)
-    attributions, input_ids = test_sample(text, ig)
-    draw_attributions(attributions, input_ids, i)
-```
-
-This code:
-
-1. Loads the BERT model for resume classification
+1. Loads the BERT model for resume classification and original dataset for labels
 2. Implements Integrated Gradients analysis
 3. Processes input text and computes token attributions
 4. Creates visualizations of the most important tokens
@@ -217,59 +135,35 @@ We looked at three main types of potential bias:
 
 We used Integrated Gradients on samples from the original dataset to see how personal details might affect the results.
 
-**Sample 1:**
+**Sample 1 (Arts):**
 ![Token attribution barplot for Sample 1](./notebooks/example1.png)
-This sample shows that irrelevant information influences the model's response.
+For this "Arts" category resume, the model correctly focused on relevant keywords like "theater," "play," and "music." However, it showed a strong preference for the location "New York" and potentially favored "girl", indicating possible location and gender bias.
 
-**Sample 2:**
+**Sample 2 (DotNet Developer):**
 ![Token attribution barplot for Sample 2](./notebooks/example2.png)
-Here, location details had influence.
+In this resume for a '.NET Developer', the model correctly identified technical skills like '.net'. However, it assigned negative importance to the token 'female' and positive importance to 'brasil', suggesting potential gender and location biases.
 
-**Sample 3:**
+**Sample 3 (Agriculture):**
 ![Token attribution barplot for Sample 3](./notebooks/example3.png)
-This sample shows that school background had too much influence.
+For this "Agriculture" resume, the model appropriately focused on a variety of professional terms. The attribution scores are distributed logically across relevant skills and experiences, without showing significant weight on potentially sensitive attributes like name or location in this instance.
 
-**Sample 4:**
-![Token attribution barplot for Sample 3](./notebooks/example4.png)
+**Sample 4 (Designing. Synthetic):**
+![Token attribution barplot for Sample 4](./notebooks/example4.png)
+The model demonstrated a strong focus on the term 'designer', possibly overshadowing other qualifications. A small negative attribution was assigned to the location 'texas', suggesting a potential bias against this region.
 
-**Sample 5:**
-![Token attribution barplot for Sample 3](./notebooks/example5.png)
+**Sample 5 (Data Science, Synthetic):**
+![Token attribution barplot for Sample 5](./notebooks/example5.png)
+For this 'Data Science' resume, the model focused well on relevant skills but showed a strong negative bias against the location 'canada'.
 
-The results are complex. Some patterns suggest bias, but the link between personal details and model decisions is not always clear. This shows why we need careful analysis and regular checks of automated resume systems.
+### Summary of Findings from Examples
 
----
+Based on the Integrated Gradients analysis of these samples, several patterns emerge:
 
-## Implications and Recommendations
+- **Location Bias**: A recurring observation is the significant attribution score assigned to location tokens (e.g., "New York", "brasil", "texas", "canada") across different job categories. This suggests the model may have learned spurious correlations between geographical locations and job roles, potentially leading to biased outcomes. The consistency of this finding across multiple examples points towards a systemic issue.
+- **Keyword Overfitting**: In some cases, like the "Designing" resume (Sample 4), the model appears to heavily rely on a single keyword ("designer"). While relevant, this intense focus might indicate overfitting, where the model prioritizes specific terms over a holistic assessment of the candidate's profile.
+- **Inconclusive Evidence for Other Biases**: While some examples showed potential gender bias (e.g., negative attribution for "female" in Sample 2, positive for "girl" in Sample 1), the evidence across the limited set of samples isn't as consistently strong or clear-cut as the location bias. Further investigation with a larger, more diverse set of resumes would be needed to draw firm conclusions about name or gender biases.
 
-Our findings have important effects on how companies should use automated resume screening:
-
-1. **Transparency Requirements**:
-
-   - Keep detailed records of how the model works
-   - Check for bias regularly
-   - Make the decision process clear to applicants
-
-2. **Model Improvement**:
-
-   - Add fairness rules during training
-   - Use diverse training data
-   - Update the model when bias is found
-
-3. **Operational Guidelines**:
-   - Keep human review for important decisions
-   - Have clear rules for special cases
-   - Review results regularly
-
----
-
-## Future Work
-
-We suggest these areas for future research:
-
-1. Better ways to find bias
-2. Standard tests for fairness in resume screening
-3. Study of how different types of bias work together
-4. New ways to reduce bias automatically
+These examples highlight how IG can pinpoint specific tokens influencing the model's decision, revealing potentially problematic patterns that warrant further investigation and mitigation.
 
 ---
 
