@@ -24,11 +24,11 @@ Companies now receive hundreds or thousands of applications for each job. Manual
 
 ## Model Description
 
-We use the publicly available model [`bert-resume-classification`](https://huggingface.co/ahmedheakl/bert-resume-classification), which implementation and results are described in the [target paper](https://arxiv.org/html/2406.18125v1)
+We use the publicly available model [`bert-resume-classification`](https://huggingface.co/ahmedheakl/bert-resume-classification), which implementation and results are described in the [paper](https://arxiv.org/html/2406.18125v1). The model was trained on the [`resume-atlas`](https://huggingface.co/datasets/ahmedheakl/resume-atlas) dataset, which contains over 13,000 professionally written resumes across 43 different job categories.
 
 - **Type**: Text-to-text model
 - **Architecture**: BERT-based transformer model
-- **Training Data**: Large collection of professional resumes
+- **Training Data**: Large collection of professional resumes from resume-atlas dataset
 - **Output**: Classification of resumes into job categories
 - **Input Processing**: Breaks down resume text into tokens while keeping context
 
@@ -84,11 +84,106 @@ The visualization shows these key points:
 3. Job level ("Senior") helped the classification
 4. Common words got low scores, as expected
 
+### Implementation Code
+
+Here's the Python code we used to implement the Integrated Gradients analysis:
+
+```python
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+import torch
+from captum.attr import IntegratedGradients
+import matplotlib.pyplot as plt
+device = "cpu" if not torch.cuda.is_available() else "cuda"
+
+# Load the BERT model for resume classification
+adapter_model_id = "ahmedheakl/bert-resume-classification"
+tokenizer = AutoTokenizer.from_pretrained(adapter_model_id, device=device)
+model = AutoModelForSequenceClassification.from_pretrained(adapter_model_id)
+model.eval()
+
+def draw_attributions(attributions, input_ids, fig_number):
+    # Process attribution scores and create visualization
+    token_attributions = attributions.sum(dim=-1).squeeze().detach().numpy()
+    tokens = tokenizer.convert_ids_to_tokens(input_ids[0])
+
+    # Get top 20 most important tokens
+    token_attr_pairs = list(zip(tokens, token_attr_pairs))
+    token_attr_pairs.sort(key=lambda x: abs(x[1]), reverse=True)
+    top_20_pairs = token_attr_pairs[:20]
+    top_tokens, top_attributions = zip(*top_20_pairs)
+
+    # Create and save the visualization
+    plt.figure(figsize=(14, 3))
+    plt.bar(top_tokens, top_attributions)
+    plt.xticks(rotation=45, ha="right")
+    plt.title("Top 20 Token Importance via Integrated Gradients")
+    plt.tight_layout()
+    plt.savefig(f"example{fig_number}.png", bbox_inches='tight')
+    plt.show()
+
+def test_sample(input_text, ig):
+    # Process input text and compute attributions
+    input_ids = get_input_ids(input_text)
+    baseline_ids = get_baseline_ids(input_ids)
+
+    input_embeds = ids_to_embeddings(input_ids)
+    baseline_embeds = ids_to_embeddings(baseline_ids)
+
+    attributions, _ = ig.attribute(
+        inputs=input_embeds,
+        baselines=baseline_embeds,
+        return_convergence_delta=True
+    )
+
+    return attributions, input_ids
+
+# Helper functions for text processing
+def get_input_ids(input_text):
+    inputs = tokenizer(input_text, return_tensors="pt", padding=True)
+    return inputs["input_ids"]
+
+def get_baseline_ids(reference_ids):
+    inputs = tokenizer("", return_tensors="pt", padding="max_length",
+                      max_length=reference_ids.shape[1])
+    return inputs["input_ids"]
+
+def ids_to_embeddings(input_ids):
+    return model.get_input_embeddings()(input_ids).requires_grad_(True)
+
+def forward_from_embeddings(input_embeds):
+    output = model(inputs_embeds=input_embeds)
+    logits = output.logits
+    return torch.softmax(logits, dim=1)[:, 1]
+
+# Sample texts for analysis
+gender_marked_texts = [
+    "Senior Java developer with 10+ years experience in backend systems, cloud, and microservices.",
+    # Additional resume samples...
+]
+
+# Run analysis on each sample
+ig = IntegratedGradients(forward_from_embeddings)
+for i, text in enumerate(gender_marked_texts):
+    print(text)
+    attributions, input_ids = test_sample(text, ig)
+    draw_attributions(attributions, input_ids, i)
+```
+
+This code:
+
+1. Loads the BERT model for resume classification
+2. Implements Integrated Gradients analysis
+3. Processes input text and computes token attributions
+4. Creates visualizations of the most important tokens
+5. Runs the analysis on sample resumes
+
+The code uses the Captum library for Integrated Gradients and PyTorch for model operations. The visualizations help us understand which parts of the resume most influence the model's decisions.
+
 ---
 
 ## Bias Evaluation
 
-We tested the model with different types of resumes:
+We tested the model with different types of resumes from the [`resume-atlas`](https://huggingface.co/datasets/ahmedheakl/resume-atlas) dataset, which contains over 13,000 professionally written resumes across 43 different job categories. Our analysis focused on:
 
 - Names that suggest different genders
 - Different locations (cities vs. rural areas, different countries)
@@ -189,5 +284,5 @@ When we combine technical solutions with ethical care, we can build better autom
 
 ## Links
 
-- **Code repository**: [https://github.com/natagapova/xai-resume-bias]
+- **Code repository**: [Github](https://github.com/natagapova/xai-resume-bias)
 - **Method paper**: [Integrated Gradients (Sundararajan et al., 2017)](https://arxiv.org/abs/1703.01365)
