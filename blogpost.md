@@ -13,25 +13,6 @@ In this project, we apply the **Integrated Gradients (IG)** method to a resume c
 
 ---
 
-## Model Description
-
-To remain aligned with the ResumeAtlas dataset (Ahmed Heakl, 2024), we trained our own classification model using `bert-base-uncased`. The dataset contains over 13,000 resumes labeled by job category.
-
-The training was performed on a single-label classification task with `num_labels = 8` using the Hugging Face Transformers library. We trained for 3 epochs on the `train.csv` file provided by the authors.
-
-| Component     | Details                       |
-|---------------|-------------------------------|
-| Architecture  | BERT (base, uncased)          |
-| Model size    | 110M parameters               |
-| Task type     | Resume → Job Category         |
-| Training time | ~15 minutes on Google Colab   |
-
-We use this model to demonstrate Integrated Gradients for token-level explainability.
-
-*Note:* The official model from the paper [arXiv:2406.18125](https://arxiv.org/abs/2406.18125) was not available as a pre-trained model on Hugging Face, so we replicated a comparable pipeline.
-
----
-
 ## Application Domain
 
 **Domain**: Human Resources automation — resume classification  
