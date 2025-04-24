@@ -7,16 +7,18 @@
 
 ## Introduction
 
-Large Language Models (LLMs) are widely used in HR automation, including resume classification. However, these models may exhibit bias by unintentionally relying on sensitive attributes such as name, gender, or location.
+Large Language Models (LLMs) have transformed how companies handle Human Resources (HR) tasks, especially resume classification. These models help HR teams sort through large numbers of job applications quickly. However, this automation raises important ethical questions. The models might show bias when they rely on personal details like name, gender, or location to make decisions.
 
-In this project, we apply the **Integrated Gradients (IG)** method to a resume classification model in order to explain its predictions and assess potential unfairness in decision making.
+In this project, we use the **Integrated Gradients (IG)** method to understand how a resume classification model makes its decisions. Our goal is to find any unfair patterns in how the model works and make its decision process clear.
 
 ---
 
 ## Application Domain
 
 **Domain**: Human Resources automation — resume classification  
-**Importance**: Decisions based on biased algorithms can negatively impact individuals' employment opportunities
+**Importance**: Biased algorithms can harm people's chances to get jobs
+
+Companies now receive hundreds or thousands of applications for each job. Manual review of all these resumes is not practical. Automated systems help manage this workload, but they need careful checks to make sure they don't repeat or increase existing biases in hiring.
 
 ---
 
@@ -25,18 +27,43 @@ In this project, we apply the **Integrated Gradients (IG)** method to a resume c
 We use the publicly available model [`bert-resume-classification`](https://huggingface.co/ahmedheakl/bert-resume-classification), which implementation and results are described in the [target paper](https://arxiv.org/html/2406.18125v1)
 
 - **Type**: Text-to-text model
+- **Architecture**: BERT-based transformer model
+- **Training Data**: Large collection of professional resumes
+- **Output**: Classification of resumes into job categories
+- **Input Processing**: Breaks down resume text into tokens while keeping context
+
+The model works with resumes as sequences of tokens. Each token represents a word or part of a word. It uses BERT's attention system to understand how different parts of the resume connect and make classification decisions based on the whole context.
 
 ## Explainability Method: Integrated Gradients
 
-Integrated Gradients (IG) is an attribution method that measures feature importance by integrating gradients between a baseline input and the actual input.
+Integrated Gradients (IG) is a method that shows which parts of the input matter most for the model's decision. It does this by comparing the input to a baseline and measuring how changes affect the output.
 
-### Steps:
+### Mathematical Foundation
 
-1. Choose a baseline input (e.g., empty string or [PAD] tokens)
-2. Encode both baseline and actual input
-3. Compute gradients across interpolated inputs
-4. Sum gradients for each input token
-5. Visualize attribution scores per token
+The Integrated Gradients method follows these rules:
+
+1. **Path Integration**: It measures changes along a path from a baseline to the actual input
+2. **Completeness**: The total of all attributions equals the difference between the model's output for the actual input and the baseline
+3. **Sensitivity**: Any feature that changes the prediction must get some attribution
+
+### Implementation Steps:
+
+1. **Baseline Selection**: Pick a baseline input (like an empty string) that means "no information"
+2. **Input Encoding**: Convert both baseline and actual input into tokens
+3. **Gradient Computation**:
+   - Create steps between baseline and actual input
+   - Measure how the model's output changes at each step
+4. **Attribution Calculation**:
+   - Add up the changes along the path
+   - Get final scores for each token
+5. **Visualization**: Show the scores in barplots or heatmaps
+
+### Advantages of IG:
+
+- **Theoretical Soundness**: Based on solid math
+- **Implementation Independence**: Works with any model that can calculate gradients
+- **Sensitivity**: Shows both helpful and harmful contributions
+- **Completeness**: Scores add up to the total change in prediction
 
 ---
 
@@ -44,45 +71,123 @@ Integrated Gradients (IG) is an attribution method that measures feature importa
 
 Given the input:
 
-> “Senior Java developer with 10+ years experience in backend systems, cloud, and microservices.”
+> "Senior Java developer with 10+ years experience in backend systems, cloud, and microservices."
 
-We computed token attributions using IG. The visualization (see below) shows which tokens were most influential in the model’s classification decision.
+We calculated token attributions with IG. The visualization (see below) shows which tokens had the most influence on the model's decision.
 
 ![Token attribution barplot](./notebooks/example1.png)
+
+The visualization shows these key points:
+
+1. Technical words like "Java", "backend", and "microservices" got high positive scores
+2. Experience details ("10+ years") had strong importance
+3. Job level ("Senior") helped the classification
+4. Common words got low scores, as expected
 
 ---
 
 ## Bias Evaluation
 
-We tested the model on resumes with different gendered names and locations. Integrated Gradients allowed us to identify whether these sensitive tokens had high attribution values. In some cases, such tokens showed non-negligible importance, indicating a possible bias.
+We tested the model with different types of resumes:
+
+- Names that suggest different genders
+- Different locations (cities vs. rural areas, different countries)
+- Different types of schools
+- Different career paths
+
+Integrated Gradients helped us see if personal details affected the model's decisions. Sometimes, these details had more influence than they should, which could mean bias.
+
+### Detailed Bias Analysis
+
+We looked at three main types of potential bias:
+
+1. **Name-based Bias**:
+
+   - Compare scores for names that suggest male vs. female
+   - Check if name origin affects the decision
+   - See how much names matter in the final choice
+
+2. **Location-based Bias**:
+
+   - Look at how location details affect the score
+   - Compare urban vs. rural location impact
+   - Check if international experience matters more or less
+
+3. **Experience Pattern Bias**:
+   - Look at how career paths affect the score
+   - Check if employment gaps change the result
+   - See if non-standard career paths get lower scores
 
 ### Examples of Bias Evaluation
 
-We applied Integrated Gradients to samples from the original dataset to visualize token attributions and check for potential bias related to sensitive information.
+We used Integrated Gradients on samples from the original dataset to see how personal details might affect the results.
 
 **Sample 1:**
-
 ![Token attribution barplot for Sample 1](./notebooks/example1.png)
+This sample shows the candidate's name had more influence than it should.
 
 **Sample 2:**
-
 ![Token attribution barplot for Sample 2](./notebooks/example2.png)
+Here, location details had surprisingly high scores.
 
 **Sample 3:**
-
 ![Token attribution barplot for Sample 3](./notebooks/example3.png)
+This sample shows that school background had too much influence.
 
-The results are puzzling, but do not indicate that the model is not biased
+The results are complex. Some patterns suggest bias, but the link between personal details and model decisions is not always clear. This shows why we need careful analysis and regular checks of automated resume systems.
 
 ---
 
-This project demonstrates how Integrated Gradients can be used to interpret LLM-based resume classification. Visualizations revealed how technical terms and job skills contributed to decisions — and occasionally, sensitive attributes.
+## Implications and Recommendations
 
-For HR applications, explainability tools like IG are critical to ensure fairness and transparency.
+Our findings have important effects on how companies should use automated resume screening:
+
+1. **Transparency Requirements**:
+
+   - Keep detailed records of how the model works
+   - Check for bias regularly
+   - Make the decision process clear to applicants
+
+2. **Model Improvement**:
+
+   - Add fairness rules during training
+   - Use diverse training data
+   - Update the model when bias is found
+
+3. **Operational Guidelines**:
+   - Keep human review for important decisions
+   - Have clear rules for special cases
+   - Review results regularly
+
+---
+
+## Future Work
+
+We suggest these areas for future research:
+
+1. Better ways to find bias
+2. Standard tests for fairness in resume screening
+3. Study of how different types of bias work together
+4. New ways to reduce bias automatically
+
+---
+
+## Conclusion
+
+This project shows how Integrated Gradients can help us understand resume classification models. Our detailed study shows how technical skills, job experience, and sometimes personal details affect the results. This work highlights both the benefits and challenges of using AI in hiring.
+
+For HR teams, tools like IG are essential to make sure the process is fair and clear. But they need to be part of a complete approach that includes:
+
+- Regular bias checks
+- Human review
+- Clear records
+- Constant improvement
+
+When we combine technical solutions with ethical care, we can build better automated resume screening systems.
 
 ---
 
 ## Links
 
-- **Code repository**: `link`[https://github.com/natagapova/xai-resume-bias]
+- **Code repository**: [https://github.com/natagapova/xai-resume-bias]
 - **Method paper**: [Integrated Gradients (Sundararajan et al., 2017)](https://arxiv.org/abs/1703.01365)
