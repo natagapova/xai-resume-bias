@@ -1,7 +1,7 @@
 # Explaining Resume Classification with Integrated Gradients
 
 **Authors**: Natalia Agapova, Andrew Levada  
-**Date**: April 25, 2025
+**Date**: April 24, 2025
 
 ---
 
@@ -22,12 +22,9 @@ In this project, we apply the **Integrated Gradients (IG)** method to a resume c
 
 ## Model Description
 
-We use the publicly available model [`distilbert-base-uncased-finetuned-sst-2-english`](https://huggingface.co/ahmedheakl/resume-classification-gemma-2b-v1):
+We use the publicly available model [`bert-resume-classification`](https://huggingface.co/ahmedheakl/bert-resume-classification), which implementation and results are described in the [target paper](https://arxiv.org/html/2406.18125v1)
 
-- **Type**: Text-to-text model  
-
-At first, we were supposed to use Ahmed Heakl's ResumeAtlas model, but it wasn't available online, so we used another model.
----
+- **Type**: Text-to-text model
 
 ## Explainability Method: Integrated Gradients
 
@@ -35,10 +32,10 @@ Integrated Gradients (IG) is an attribution method that measures feature importa
 
 ### Steps:
 
-1. Choose a baseline input (e.g., empty string or [PAD] tokens)  
-2. Encode both baseline and actual input  
-3. Compute gradients across interpolated inputs  
-4. Sum gradients for each input token  
+1. Choose a baseline input (e.g., empty string or [PAD] tokens)
+2. Encode both baseline and actual input
+3. Compute gradients across interpolated inputs
+4. Sum gradients for each input token
 5. Visualize attribution scores per token
 
 ---
@@ -51,7 +48,7 @@ Given the input:
 
 We computed token attributions using IG. The visualization (see below) shows which tokens were most influential in the model’s classification decision.
 
-![Token attribution barplot](./img/example1.png)
+![Token attribution barplot](./notebooks/example1.png)
 
 ---
 
@@ -59,9 +56,25 @@ We computed token attributions using IG. The visualization (see below) shows whi
 
 We tested the model on resumes with different gendered names and locations. Integrated Gradients allowed us to identify whether these sensitive tokens had high attribution values. In some cases, such tokens showed non-negligible importance, indicating a possible bias.
 
----
+### Examples of Bias Evaluation
 
-## Conclusion
+We applied Integrated Gradients to samples from the original dataset to visualize token attributions and check for potential bias related to sensitive information.
+
+**Sample 1:**
+
+![Token attribution barplot for Sample 1](./notebooks/example1.png)
+
+**Sample 2:**
+
+![Token attribution barplot for Sample 2](./notebooks/example2.png)
+
+**Sample 3:**
+
+![Token attribution barplot for Sample 3](./notebooks/example3.png)
+
+The results are puzzling, but do not indicate that the model is not biased
+
+---
 
 This project demonstrates how Integrated Gradients can be used to interpret LLM-based resume classification. Visualizations revealed how technical terms and job skills contributed to decisions — and occasionally, sensitive attributes.
 
