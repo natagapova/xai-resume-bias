@@ -48,6 +48,17 @@ The Integrated Gradients method follows 3 key rules:
 2. **Completeness**: The total of all attributions equals the difference between the model's output for the actual input and the baseline
 3. **Sensitivity**: Any feature that changes the prediction must get some attribution
 
+The formula for Integrated Gradients is:  
+$IG(x, x') = (x - x') \cdot \int_{\alpha=0}^{1} \nabla F(x' + \alpha(x - x')) d\alpha$
+
+Where:
+
+- *x* = your actual input (e.g., embedded resume text),
+- *x'* = the baseline (e.g., all-zero embedding or [PAD]),
+- *F()* = your model's output function (e.g., logits for a class),
+- *∇F(...)* = the gradient of the output with respect to the input,
+- *α* = interpolation scalar from 0 to 1.
+
 ### Implementation Steps:
 
 1. **Baseline Selection**: Pick a baseline input (like an empty string) that means "no information"
